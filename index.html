@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Emergency Nearby</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --primary: #2563EB;
+    --primary-dark: #1D4ED8;
+    --bg: #F8FAFC;
+    --card: #FFFFFF;
+    --text: #1E293B;
+    --text-muted: #64748B;
+    --text-hint: #94A3B8;
+    --border: #E2E8F0;
+    --hospital: #2563EB;
+    --police: #1E3A5F;
+    --pharmacy: #059669;
+    --fire: #DC2626;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+  [data-theme="dark"] {
+    --bg: #0F172A;
+    --card: #1E293B;
+    --text: #F1F5F9;
+    --text-muted: #94A3B8;
+    --text-hint: #475569;
+    --border: #334155;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    transition: background 0.3s, color 0.3s;
+    overflow-x: hidden;
+  }
+
+  /* SPLASH */
+  #splash {
+    position: fixed; inset: 0; z-index: 999;
+    background: linear-gradient(145deg, #1D4ED8 0%, #2563EB 50%, #3B82F6 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 0.6s, transform 0.6s;
+  }
+  #splash.hide { opacity: 0; transform: scale(1.04); pointer-events: none; }
+  .splash-pulse {
+    width: 96px; height: 96px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 28px;
+    position: relative;
+  }
+  .splash-pulse::before, .splash-pulse::after {
+    content: ''; position: absolute;
+    border-radius: 50%; border: 2px solid rgba(255,255,255,0.4);
+    animation: ripple 2s ease-out infinite;
+  }
+  .splash-pulse::after { animation-delay: 1s; }
+  @keyframes ripple {
+    0% { width: 100%; height: 100%; opacity: 1; }
+    100% { width: 200%; height: 200%; opacity: 0; }
+  }
+  .splash-icon { font-size: 40px; }
+  .splash-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px; color: #fff; margin-bottom: 8px; letter-spacing: -0.5px;
+  }
+  .splash-sub { font-size: 15px; color: rgba(255,255,255,0.7); margin-bottom: 48px; }
+  .splash-btn {
+    background: #fff; color: #2563EB;
+    border: none; padding: 16px 40px;
+    border-radius: 50px; font-size: 16px; font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer; letter-spacing: 0.2px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .splash-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.25); }
+  .splash-btn:active { transform: translateY(0); }
+  .splash-version { position: absolute; bottom: 32px; color: rgba(255,255,255,0.4); font-size: 12px; }
+
+  /* APP SHELL */
+  #app { display: none; max-width: 430px; margin: 0 auto; position: relative; min-height: 100vh; padding-bottom: 80px; }
+  #app.visible { display: block; }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px 12px;
+    position: sticky; top: 0; z-index: 50;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px; color: var(--primary); letter-spacing: -0.3px;
+  }
+  .topbar-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--card);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px;
+    transition: background 0.2s;
+    box-shadow: var(--shadow-sm);
+  }
+  .icon-btn:hover { background: var(--border); }
+
+  /* LOCATION BANNER */
+  .loc-banner {
+    margin: 16px 20px 0;
+    background: var(--primary);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 4px 20px rgba(37,99,235,0.3);
+  }
+  .loc-dot {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .loc-text { flex: 1; overflow: hidden; }
+  .loc-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.8px; }
+  .loc-address { font-size: 13px; color: #fff; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .loc-accuracy { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 1px; }
+  .loc-refresh {
+    background: rgba(255,255,255,0.2); border: none;
+    border-radius: 8px; padding: 6px 10px;
+    color: #fff; font-size: 12px; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.2s;
+  }
+  .loc-refresh:hover { background: rgba(255,255,255,0.3); }
+
+  /* SEARCH */
+  .search-wrap { padding: 14px 20px 0; }
+  .search-box {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 50px; padding: 10px 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .search-box span { font-size: 18px; }
+  .search-box input {
+    border: none; background: transparent; outline: none;
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    color: var(--text); flex: 1;
+  }
+  .search-box input::placeholder { color: var(--text-hint); }
+
+  /* CATEGORY PILLS */
+  .cat-section { padding: 16px 20px 0; }
+  .cat-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 12px; }
+  .cat-pills { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+  .cat-pills::-webkit-scrollbar { display: none; }
+  .pill {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 50px;
+    border: 1.5px solid var(--border);
+    background: var(--card); cursor: pointer;
+    white-space: nowrap; font-size: 13px; font-weight: 500;
+    color: var(--text-muted); transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
+  }
+  .pill.active { border-color: var(--pill-color); background: var(--pill-bg); color: var(--pill-color); }
+  .pill-icon { font-size: 16px; }
+
+  /* MAP SECTION */
+  .map-section { margin: 16px 20px 0; }
+  .map-card {
+    border-radius: var(--radius); overflow: hidden;
+    box-shadow: var(--shadow-md); position: relative;
+    height: 180px; background: #e8f0fe;
+  }
+  .map-placeholder {
+    width: 100%; height: 100%;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 8px; position: relative; overflow: hidden;
+  }
+  [data-theme="dark"] .map-placeholder { background: linear-gradient(135deg, #1e3a5f 0%, #172554 100%); }
+  .map-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(37,99,235,0.08) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(37,99,235,0.08) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .map-roads {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(37,99,235,0.15) 2px, transparent 2px),
+                      linear-gradient(90deg, rgba(37,99,235,0.15) 2px, transparent 2px);
+    background-size: 96px 96px;
+  }
+  .map-you {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 2;
+  }
+  .map-you-dot {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #2563EB; border: 3px solid #fff;
+    box-shadow: 0 0 0 6px rgba(37,99,235,0.2);
+    animation: you-pulse 2s ease-in-out infinite;
+  }
+  @keyframes you-pulse {
+    0%, 100% { box-shadow: 0 0 0 6px rgba(37,99,235,0.2); }
+    50% { box-shadow: 0 0 0 12px rgba(37,99,235,0.08); }
+  }
+  .map-marker {
+    position: absolute; transform: translate(-50%, -100%);
+    display: flex; flex-direction: column; align-items: center;
+    cursor: pointer; transition: transform 0.2s;
+  }
+  .map-marker:hover { transform: translate(-50%, -100%) scale(1.1); }
+  .map-marker-bubble {
+    width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg); display: flex; align-items: center;
+    justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .map-marker-bubble span { transform: rotate(45deg); font-size: 14px; }
+  .map-open-btn {
+    position: absolute; bottom: 10px; right: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px;
+    font-size: 12px; font-weight: 600; color: var(--primary);
+    cursor: pointer; box-shadow: var(--shadow-sm);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* NEARBY CARDS */
+  .nearby-section { padding: 16px 20px 0; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-size: 17px; font-weight: 700; color: var(--text); }
+  .see-all { font-size: 13px; color: var(--primary); font-weight: 600; cursor: pointer; }
+  .cards-grid { display: flex; flex-direction: column; gap: 12px; }
+  .service-card {
+    background: var(--card); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 16px;
+    display: flex; align-items: center; gap: 14px;
+    box-shadow: var(--shadow-sm); cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .service-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px; border-radius: 16px 0 0 16px;
+    background: var(--card-accent);
+  }
+  .service-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); border-color: var(--card-accent); }
+  .card-icon-wrap {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: var(--card-icon-bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; flex-shrink: 0;
+  }
+  .card-body { flex: 1; min-width: 0; }
+  .card-name { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card-dist { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .card-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--border); }
+  .card-status { font-size: 12px; font-weight: 600; }
+  .card-status.open { color: #059669; }
+  .card-status.closed { color: #DC2626; }
+  .card-rating { display: flex; align-items: center; gap: 3px; font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  .card-rating .star { color: #F59E0B; font-size: 11px; }
+  .card-actions { display: flex; flex-direction: column; gap: 6px; }
+  .card-btn {
+    padding: 6px 12px; border-radius: 8px; border: none;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; white-space: nowrap;
+    transition: opacity 0.2s, transform 0.15s;
+  }
+  .card-btn:hover { opacity: 0.85; transform: scale(0.97); }
+  .card-btn.nav { background: var(--primary); color: #fff; }
+  .card-btn.call { background: transparent; border: 1.5px solid var(--card-accent); color: var(--card-accent); }
+
+  /* EMERGENCY TIPS */
+  .tips-section { padding: 16px 20px 0; }
+  .tips-card {
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+    border-radius: var(--radius); padding: 16px;
+    border: 1px solid #F59E0B;
+  }
+  [data-theme="dark"] .tips-card { background: linear-gradient(135deg, #451a03, #78350f); border-color: #92400e; }
+  .tips-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .tips-icon { font-size: 20px; }
+  .tips-title { font-size: 14px; font-weight: 700; color: #92400E; }
+  [data-theme="dark"] .tips-title { color: #FDE68A; }
+  .tips-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .tips-list li { font-size: 13px; color: #78350F; display: flex; gap: 6px; }
+  [data-theme="dark"] .tips-list li { color: #FCD34D; }
+  .tips-list li::before { content: '•'; color: #F59E0B; font-weight: 700; flex-shrink: 0; }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    z-index: 100; box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 3px; cursor: pointer; padding: 4px 0;
+    transition: color 0.2s; color: var(--text-hint);
+  }
+  .nav-item.active { color: var(--primary); }
+  .nav-icon { font-size: 22px; }
+  .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
+  .nav-sos {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    cursor: pointer; padding: 2px 0;
+  }
+  .sos-circle {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: #DC2626; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(220,38,38,0.4);
+    margin-top: -20px; border: 3px solid var(--card);
+    animation: sos-glow 3s ease-in-out infinite;
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .sos-circle:hover { transform: scale(1.06); }
+  .sos-circle:active { transform: scale(0.95); }
+  @keyframes sos-glow {
+    0%, 100% { box-shadow: 0 4px 16px rgba(220,38,38,0.4); }
+    50% { box-shadow: 0 4px 24px rgba(220,38,38,0.65); }
+  }
+  .sos-text { font-size: 12px; font-weight: 800; color: #fff; letter-spacing: 1px; }
+  .sos-icon { font-size: 14px; }
+  .nav-sos-label { font-size: 10px; font-weight: 600; letter-spacing: 0.3px; color: #DC2626; margin-top: 4px; }
+
+  /* DETAIL VIEW */
+  #detail {
+    position: fixed; inset: 0; z-index: 200;
+    background: var(--bg);
+    transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    max-width: 430px; left: 50%; transform: translateX(-50%) translateY(100%);
+    overflow-y: auto;
+  }
+  #detail.open { transform: translateX(-50%) translateY(0); }
+  .detail-hero {
+    height: 200px; position: relative;
+    display: flex; align-items: flex-end;
+    padding: 20px;
+  }
+  .detail-map-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    overflow: hidden;
+  }
+  [data-theme="dark"] .detail-map-bg { background: linear-gradient(135deg, #1e3a5f 0%, #172554 100%); }
+  .detail-map-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(37,99,235,0.1) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(37,99,235,0.1) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .detail-pin {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -60%);
+    font-size: 40px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+    animation: pin-bounce 1s ease-out;
+  }
+  @keyframes pin-bounce {
+    0% { transform: translate(-50%, -80%); opacity: 0; }
+    60% { transform: translate(-50%, -55%); }
+    100% { transform: translate(-50%, -60%); opacity: 1; }
+  }
+  .detail-back {
+    position: absolute; top: 16px; left: 16px;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--card); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px; box-shadow: var(--shadow-sm);
+  }
+  .detail-badge {
+    padding: 6px 14px; border-radius: 50px;
+    font-size: 12px; font-weight: 700; color: #fff;
+    letter-spacing: 0.5px;
+  }
+  .detail-body { padding: 20px; }
+  .detail-name { font-size: 24px; font-weight: 800; color: var(--text); margin-bottom: 6px; letter-spacing: -0.4px; }
+  .detail-row { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .detail-row span { font-size: 16px; }
+  .detail-divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .detail-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .stat-box {
+    background: var(--bg); border-radius: var(--radius-sm);
+    border: 1px solid var(--border); padding: 12px 8px; text-align: center;
+  }
+  .stat-val { font-size: 16px; font-weight: 700; color: var(--text); }
+  .stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .detail-cta { display: flex; gap: 10px; }
+  .cta-btn {
+    flex: 1; padding: 16px; border-radius: var(--radius);
+    border: none; font-size: 15px; font-weight: 700;
+    font-family: 'DM Sans', sans-serif; cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .cta-btn:hover { opacity: 0.88; }
+  .cta-btn:active { transform: scale(0.97); }
+  .cta-nav { background: var(--primary); color: #fff; box-shadow: 0 4px 16px rgba(37,99,235,0.3); }
+  .cta-call { background: var(--call-color, #DC2626); color: #fff; box-shadow: 0 4px 16px rgba(220,38,38,0.3); }
+  .detail-info { margin-top: 16px; }
+  .info-row { display: flex; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
+  .info-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .info-label { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
+  .info-val { font-size: 14px; font-weight: 600; color: var(--text); }
+
+  /* SOS MODAL */
+  #sos-modal {
+    position: fixed; inset: 0; z-index: 999;
+    background: rgba(0,0,0,0.7);
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  #sos-modal.show { display: flex; }
+  .sos-modal-box {
+    background: var(--card); border-radius: 24px;
+    padding: 28px 24px; width: 340px; max-width: 90vw;
+    text-align: center; animation: modal-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes modal-in {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .sos-modal-icon { font-size: 48px; margin-bottom: 12px; }
+  .sos-modal-title { font-size: 22px; font-weight: 800; color: #DC2626; margin-bottom: 6px; }
+  .sos-modal-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+  .sos-modal-btns { display: flex; flex-direction: column; gap: 8px; }
+  .sos-call-btn {
+    padding: 16px; border-radius: var(--radius);
+    border: none; font-size: 15px; font-weight: 700;
+    font-family: 'DM Sans', sans-serif; cursor: pointer;
+    display: flex; align-items: center; gap: 10px; justify-content: center;
+    color: #fff; transition: opacity 0.2s;
+  }
+  .sos-call-btn:hover { opacity: 0.9; }
+  .sos-cancel {
+    padding: 12px; border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: transparent; color: var(--text-muted);
+    font-size: 14px; font-weight: 600;
+    font-family: 'DM Sans', sans-serif; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .sos-cancel:hover { background: var(--bg); }
+
+  /* LOADING */
+  .loading-bar {
+    height: 3px; background: var(--border); border-radius: 3px; margin: 12px 20px 0;
+    overflow: hidden;
+  }
+  .loading-bar-inner {
+    height: 100%; background: var(--primary); border-radius: 3px;
+    width: 30%; animation: load-slide 1.5s ease-in-out infinite;
+  }
+  @keyframes load-slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: var(--card);
+    padding: 10px 20px; border-radius: 50px; font-size: 13px; font-weight: 600;
+    white-space: nowrap; z-index: 500; opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    max-width: calc(100vw - 40px);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* FADE IN ANIMATION */
+  .fade-up {
+    opacity: 0; transform: translateY(12px);
+    animation: fadeUp 0.5s ease forwards;
+  }
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .delay-1 { animation-delay: 0.1s; }
+  .delay-2 { animation-delay: 0.2s; }
+  .delay-3 { animation-delay: 0.3s; }
+  .delay-4 { animation-delay: 0.4s; }
+  .delay-5 { animation-delay: 0.5s; }
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-pulse">
+    <span class="splash-icon">🚨</span>
+  </div>
+  <h1 class="splash-title">Emergency Nearby</h1>
+  <p class="splash-sub">Find Help, Fast</p>
+  <button class="splash-btn" onclick="startApp()">Get Started →</button>
+  <span class="splash-version">v1.0 · Location-Based Services</span>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-logo">🚨 Emergency</div>
+    <div class="topbar-actions">
+      <div class="icon-btn" onclick="toggleDark()" title="Toggle dark mode" id="theme-btn">🌙</div>
+      <div class="icon-btn" onclick="refreshLocation()" title="Refresh location">📡</div>
+    </div>
+  </div>
+
+  <!-- LOADING BAR -->
+  <div class="loading-bar" id="loading-bar"><div class="loading-bar-inner"></div></div>
+
+  <!-- LOCATION BANNER -->
+  <div class="loc-banner fade-up delay-1">
+    <div class="loc-dot">📍</div>
+    <div class="loc-text">
+      <div class="loc-label">Your Location</div>
+      <div class="loc-address" id="loc-address">Detecting location…</div>
+      <div class="loc-accuracy" id="loc-accuracy">Tap refresh to update</div>
+    </div>
+    <button class="loc-refresh" onclick="refreshLocation()">↺ Refresh</button>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="search-wrap fade-up delay-2">
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" placeholder="Search hospitals, police, pharmacy…" id="search-input" oninput="filterCards()" />
+    </div>
+  </div>
+
+  <!-- CATEGORY FILTER -->
+  <div class="cat-section fade-up delay-2">
+    <div class="cat-title">Filter by type</div>
+    <div class="cat-pills">
+      <div class="pill active" data-cat="all" onclick="setFilter('all', this)" style="--pill-color:#2563EB;--pill-bg:#EFF6FF;">
+        <span class="pill-icon">⚡</span> All Services
+      </div>
+      <div class="pill" data-cat="hospital" onclick="setFilter('hospital', this)" style="--pill-color:#2563EB;--pill-bg:#EFF6FF;">
+        <span class="pill-icon">🏥</span> Hospitals
+      </div>
+      <div class="pill" data-cat="police" onclick="setFilter('police', this)" style="--pill-color:#1E3A5F;--pill-bg:#F0F4F8;">
+        <span class="pill-icon">🚓</span> Police
+      </div>
+      <div class="pill" data-cat="pharmacy" onclick="setFilter('pharmacy', this)" style="--pill-color:#059669;--pill-bg:#ECFDF5;">
+        <span class="pill-icon">💊</span> Pharmacy
+      </div>
+      <div class="pill" data-cat="fire" onclick="setFilter('fire', this)" style="--pill-color:#DC2626;--pill-bg:#FEF2F2;">
+        <span class="pill-icon">🚒</span> Fire Station
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="map-section fade-up delay-3">
+    <div class="map-card">
+      <div class="map-placeholder">
+        <div class="map-grid"></div>
+        <div class="map-roads"></div>
+        <!-- Markers -->
+        <div class="map-marker" style="left:35%;top:40%;" onclick="openDetail(0)">
+          <div class="map-marker-bubble" style="background:#2563EB;"><span>🏥</span></div>
+        </div>
+        <div class="map-marker" style="left:65%;top:35%;" onclick="openDetail(1)">
+          <div class="map-marker-bubble" style="background:#1E3A5F;"><span>🚓</span></div>
+        </div>
+        <div class="map-marker" style="left:55%;top:62%;" onclick="openDetail(2)">
+          <div class="map-marker-bubble" style="background:#059669;"><span>💊</span></div>
+        </div>
+        <div class="map-marker" style="left:28%;top:65%;" onclick="openDetail(3)">
+          <div class="map-marker-bubble" style="background:#DC2626;"><span>🚒</span></div>
+        </div>
+        <!-- You are here -->
+        <div class="map-you">
+          <div class="map-you-dot"></div>
+        </div>
+        <button class="map-open-btn" onclick="openMaps()">Open in Maps ↗</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEARBY SERVICES -->
+  <div class="nearby-section fade-up delay-4">
+    <div class="section-header">
+      <div class="section-title">Nearby Services</div>
+      <div class="see-all">See All</div>
+    </div>
+    <div class="cards-grid" id="cards-grid"></div>
+  </div>
+
+  <!-- EMERGENCY TIPS -->
+  <div class="tips-section fade-up delay-5">
+    <div class="tips-card">
+      <div class="tips-header">
+        <span class="tips-icon">⚠️</span>
+        <span class="tips-title">Emergency Tips</span>
+      </div>
+      <ul class="tips-list">
+        <li>Stay calm and state your exact location clearly</li>
+        <li>Call 112 for nationwide emergency in India</li>
+        <li>Don't move an injured person unless necessary</li>
+        <li>Keep your phone charged in case of emergencies</li>
+        <li>Know the nearest hospital route from your home</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="height: 16px;"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav" id="bottom-nav" style="display:none;">
+  <div class="nav-item active" onclick="navTo('home', this)">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label">Home</span>
+  </div>
+  <div class="nav-item" onclick="navTo('map', this)">
+    <span class="nav-icon">🗺️</span>
+    <span class="nav-label">Map</span>
+  </div>
+  <div class="nav-sos" onclick="showSOS()">
+    <div class="sos-circle">
+      <span class="sos-icon">🆘</span>
+      <span class="sos-text">SOS</span>
+    </div>
+    <span class="nav-sos-label">Emergency</span>
+  </div>
+  <div class="nav-item" onclick="navTo('fav', this)">
+    <span class="nav-icon">⭐</span>
+    <span class="nav-label">Saved</span>
+  </div>
+  <div class="nav-item" onclick="navTo('profile', this)">
+    <span class="nav-icon">👤</span>
+    <span class="nav-label">Profile</span>
+  </div>
+</div>
+
+<!-- DETAIL VIEW -->
+<div id="detail">
+  <div class="detail-hero">
+    <div class="detail-map-bg">
+      <div class="detail-map-grid"></div>
+    </div>
+    <div class="detail-pin" id="detail-pin">🏥</div>
+    <div class="detail-back" onclick="closeDetail()">←</div>
+    <div class="detail-badge" id="detail-badge">Hospital</div>
+  </div>
+  <div class="detail-body">
+    <div class="detail-name" id="detail-name">City Hospital</div>
+    <div class="detail-row"><span>📍</span> <span id="detail-address"></span></div>
+    <div class="detail-row"><span>📏</span> <span id="detail-dist"></span> away · <span id="detail-eta"></span> by car</div>
+    <div class="detail-divider"></div>
+    <div class="detail-stats">
+      <div class="stat-box">
+        <div class="stat-val" id="stat-rating">—</div>
+        <div class="stat-lbl">Rating</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-time">24h</div>
+        <div class="stat-lbl">Hours</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-phone">112</div>
+        <div class="stat-lbl">Helpline</div>
+      </div>
+    </div>
+    <div class="detail-cta">
+      <button class="cta-btn cta-nav" id="detail-nav-btn" onclick="navigateTo()">🗺️ Navigate</button>
+      <button class="cta-btn cta-call" id="detail-call-btn" onclick="callPlace()">📞 Call Now</button>
+    </div>
+    <div class="detail-info">
+      <div class="info-row">
+        <span class="info-icon">🕐</span>
+        <div>
+          <div class="info-label">Operating Hours</div>
+          <div class="info-val" id="detail-hours">Open 24 hours</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <span class="info-icon">🚗</span>
+        <div>
+          <div class="info-label">Directions</div>
+          <div class="info-val" id="detail-directions">Via Main Road</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <span class="info-icon">ℹ️</span>
+        <div>
+          <div class="info-label">About</div>
+          <div class="info-val" id="detail-about">Government facility</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SOS MODAL -->
+<div id="sos-modal">
+  <div class="sos-modal-box">
+    <div class="sos-modal-icon">🆘</div>
+    <div class="sos-modal-title">Emergency SOS</div>
+    <div class="sos-modal-sub">Choose your emergency service to call immediately</div>
+    <div class="sos-modal-btns">
+      <button class="sos-call-btn" style="background:#DC2626;" onclick="emergencyCall('112')">🚨 Call 112 — National Emergency</button>
+      <button class="sos-call-btn" style="background:#2563EB;" onclick="emergencyCall('108')">🚑 Call 108 — Ambulance</button>
+      <button class="sos-call-btn" style="background:#1E3A5F;" onclick="emergencyCall('100')">🚓 Call 100 — Police</button>
+      <button class="sos-call-btn" style="background:#bfbd30;" onclick="emergencyCall('1098')">🚒 Call 1098 — child help line</button>
+      <button class="sos-call-btn" style="background:#c9389b;" onclick="emergencyCall('1091')">🚓 Call 1091 — women safety Helpline</button>
+      <button class="sos-call-btn" style="background:#e83535;" onclick="emergencyCall('112')">🚓 Call 112 — fire Station</button>
+      <button class="sos-call-btn" style="background:#c45c17;" onclick="emergencyCall('1070')">🚓 Call 1070 — disaster management</button>
+      <button class="sos-call-btn" style="background:#82e08d;" onclick="emergencyCall('104')">🚓 Call 104 — health assistance</button>
+      <button class="sos-cancel" onclick="closeSOS()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const services = [
+  {
+    name: "City Government Hospital",
+    type: "hospital", icon: "🏥",
+    address: "14, MG Road, Near Central Bus Stand",
+    dist: "0.8 km", eta: "4 min", rating: "4.2",
+    phone: "022-24112345", hours: "Open 24 hours",
+    directions: "Via MG Road, left at Central Park",
+    about: "Large government multi-specialty hospital with 500 beds, trauma center, and emergency ICU.",
+    color: "#2563EB", callColor: "#2563EB",
+    iconBg: "#EFF6FF", accent: "#2563EB",
+    badge: "Hospital"
+  },
+  {
+    name: "Apollo Clinic & Hospital",
+    type: "hospital", icon: "🏥",
+    address: "Plot 7, Andheri West, Near Station",
+    dist: "1.4 km", eta: "7 min", rating: "4.5",
+    phone: "022-67678000", hours: "Open 24 hours",
+    directions: "Via SV Road, straight 1.2 km",
+    about: "Private multi-specialty hospital with 24/7 emergency services and advanced diagnostics.",
+    color: "#2563EB", callColor: "#2563EB",
+    iconBg: "#EFF6FF", accent: "#2563EB",
+    badge: "Hospital"
+  },
+  {
+    name: "Andheri Police Station",
+    type: "police", icon: "🚓",
+    address: "Police Colony, Andheri East, Mumbai",
+    dist: "1.1 km", eta: "5 min", rating: "3.8",
+    phone: "100", hours: "Open 24 hours",
+    directions: "Via Chakala Junction, right turn",
+    about: "Mumbai Police Andheri Division. Handles law enforcement for Andheri zone.",
+    color: "#1E3A5F", callColor: "#1E3A5F",
+    iconBg: "#F0F4F8", accent: "#1E3A5F",
+    badge: "Police"
+  },
+  {
+    name: "MedPlus Pharmacy",
+    type: "pharmacy", icon: "💊",
+    address: "Shop 3, Lokhandwala Market, Andheri",
+    dist: "0.5 km", eta: "3 min", rating: "4.3",
+    phone: "1800-102-7777", hours: "7:00 AM – 11:00 PM",
+    directions: "Opposite D-Mart, Lokhandwala Circle",
+    about: "24-hour pharmacy with prescription medicines, OTC drugs, and medical supplies.",
+    color: "#059669", callColor: "#059669",
+    iconBg: "#ECFDF5", accent: "#059669",
+    badge: "Pharmacy"
+  },
+  {
+    name: "Apollo Pharmacy",
+    type: "pharmacy", icon: "💊",
+    address: "31, Versova Road, Andheri West",
+    dist: "1.8 km", eta: "8 min", rating: "4.1",
+    phone: "1860-500-0101", hours: "8:00 AM – 10:00 PM",
+    directions: "Via Versova Road, near church",
+    about: "Part of Apollo chain. Quality assured medicines and health products.",
+    color: "#059669", callColor: "#059669",
+    iconBg: "#ECFDF5", accent: "#059669",
+    badge: "Pharmacy"
+  },
+  {
+    name: "Andheri Fire Brigade",
+    type: "fire", icon: "🚒",
+    address: "Fire Station Road, Andheri East, Mumbai",
+    dist: "1.6 km", eta: "6 min", rating: "4.6",
+    phone: "101", hours: "Open 24 hours",
+    directions: "Adjacent to MIDC Office, Andheri East",
+    about: "Mumbai Fire Brigade Andheri unit. Handles fire emergencies and rescue operations.",
+    color: "#DC2626", callColor: "#DC2626",
+    iconBg: "#FEF2F2", accent: "#DC2626",
+    badge: "Fire Station"
+  }
+];
+
+let currentFilter = 'all';
+let currentSearch = '';
+let activeDetail = null;
+let isDark = false;
+
+function startApp() {
+  document.getElementById('splash').classList.add('hide');
+  setTimeout(() => {
+    document.getElementById('splash').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    document.getElementById('bottom-nav').style.display = 'flex';
+    document.getElementById('loading-bar').style.display = 'none';
+    renderCards();
+    getLocation();
+  }, 600);
+}
+
+function getLocation() {
+  document.getElementById('loading-bar').style.display = 'block';
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        document.getElementById('loc-address').textContent = `${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`;
+        document.getElementById('loc-accuracy').textContent = `Accuracy: ±${Math.round(accuracy)}m`;
+        reverseGeocode(lat, lng);
+        document.getElementById('loading-bar').style.display = 'none';
+      },
+      err => {
+        document.getElementById('loc-address').textContent = 'Andheri West, Mumbai, MH';
+        document.getElementById('loc-accuracy').textContent = 'Demo mode — location unavailable';
+        document.getElementById('loading-bar').style.display = 'none';
+        showToast('Using demo location');
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  } else {
+    document.getElementById('loc-address').textContent = 'Andheri West, Mumbai, MH';
+    document.getElementById('loc-accuracy').textContent = 'Demo mode';
+    document.getElementById('loading-bar').style.display = 'none';
+  }
+}
+
+function reverseGeocode(lat, lng) {
+  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+    .then(r => r.json())
+    .then(data => {
+      const addr = data.address;
+      const parts = [addr.suburb || addr.neighbourhood, addr.city || addr.town, addr.state_district || addr.state].filter(Boolean);
+      document.getElementById('loc-address').textContent = parts.slice(0, 3).join(', ');
+      document.getElementById('loc-accuracy').textContent = 'Live location · Updated just now';
+    })
+    .catch(() => {});
+}
+
+function refreshLocation() { showToast('Refreshing location…'); getLocation(); }
+
+function renderCards() {
+  const grid = document.getElementById('cards-grid');
+  const filtered = services.filter(s => {
+    const matchCat = currentFilter === 'all' || s.type === currentFilter;
+    const matchSearch = s.name.toLowerCase().includes(currentSearch.toLowerCase()) ||
+                        s.address.toLowerCase().includes(currentSearch.toLowerCase());
+    return matchCat && matchSearch;
+  });
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:14px;">No services found. Try a different filter.</div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map((s, i) => {
+    const idx = services.indexOf(s);
+    const stars = '★'.repeat(Math.floor(parseFloat(s.rating)));
+    return `
+    <div class="service-card" style="--card-accent:${s.accent};" onclick="openDetail(${idx})">
+      <div class="card-icon-wrap" style="background:${s.iconBg};">${s.icon}</div>
+      <div class="card-body">
+        <div class="card-name">${s.name}</div>
+        <div class="card-meta">
+          <span class="card-dist">📏 ${s.dist}</span>
+          <span class="card-dot"></span>
+          <span class="card-status open">● Open</span>
+        </div>
+        <div class="card-rating">
+          <span class="star">${stars}</span>
+          <span>${s.rating}</span>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="card-btn nav" onclick="event.stopPropagation();navigateDirect('${s.name}')">Navigate</button>
+        <button class="card-btn call" style="border-color:${s.color};color:${s.color};" onclick="event.stopPropagation();callDirect('${s.phone}')">📞 Call</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFilter(cat, el) {
+  currentFilter = cat;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  renderCards();
+}
+
+function filterCards() {
+  currentSearch = document.getElementById('search-input').value;
+  renderCards();
+}
+
+function openDetail(idx) {
+  activeDetail = idx;
+  const s = services[idx];
+  document.getElementById('detail-pin').textContent = s.icon;
+  document.getElementById('detail-badge').textContent = s.badge;
+  document.getElementById('detail-badge').style.background = s.color;
+  document.getElementById('detail-name').textContent = s.name;
+  document.getElementById('detail-address').textContent = s.address;
+  document.getElementById('detail-dist').textContent = s.dist;
+  document.getElementById('detail-eta').textContent = s.eta;
+  document.getElementById('stat-rating').textContent = `★ ${s.rating}`;
+  document.getElementById('stat-phone').textContent = s.phone.length <= 5 ? s.phone : s.phone.slice(0,5);
+  document.getElementById('detail-hours').textContent = s.hours;
+  document.getElementById('detail-directions').textContent = s.directions;
+  document.getElementById('detail-about').textContent = s.about;
+  document.querySelector('.cta-call').style.background = s.callColor;
+  document.querySelector('.cta-call').style.boxShadow = `0 4px 16px ${s.callColor}44`;
+  document.getElementById('detail').classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detail').classList.remove('open');
+}
+
+function navigateTo() {
+  const s = services[activeDetail];
+  openMapsTo(s.name);
+}
+
+function callPlace() {
+  const s = services[activeDetail];
+  callDirect(s.phone);
+}
+
+function navigateDirect(name) {
+  const q = encodeURIComponent(name + ' Mumbai');
+  window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
+}
+
+function callDirect(phone) {
+  window.location.href = `tel:${phone.replace(/[^0-9+]/g, '')}`;
+  showToast(`Calling ${phone}…`);
+}
+
+function openMaps() {
+  window.open('https://www.google.com/maps', '_blank');
+}
+
+function openMapsTo(name) {
+  const q = encodeURIComponent(name + ' Mumbai');
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${q}`, '_blank');
+  showToast('Opening navigation…');
+}
+
+function showSOS() {
+  document.getElementById('sos-modal').classList.add('show');
+}
+
+function closeSOS() {
+  document.getElementById('sos-modal').classList.remove('show');
+}
+
+function emergencyCall(num) {
+  window.location.href = `tel:${num}`;
+  closeSOS();
+  showToast(`Calling ${num}…`);
+}
+
+function toggleDark() {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
+  document.getElementById('theme-btn').textContent = isDark ? '☀️' : '🌙';
+  showToast(isDark ? 'Dark mode on' : 'Light mode on');
+}
+
+function navTo(page, el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  if (page === 'map') { openMaps(); return; }
+  if (page !== 'home') showToast(`${page.charAt(0).toUpperCase() + page.slice(1)} coming soon!`);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Close detail on outside tap
+document.getElementById('detail').addEventListener('click', function(e) {
+  if (e.target === this) closeDetail();
+});
+document.getElementById('sos-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeSOS();
+});
+</script>
+</body>
+</html>
